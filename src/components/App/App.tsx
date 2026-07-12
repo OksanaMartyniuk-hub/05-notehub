@@ -105,9 +105,7 @@ export default function App() {
       )}
 
       {/* Умова: Список рендериться, тільки якщо є хоча б одна нотатка */}
-      {!isLoading && !isError && notes.length > 0 && (
-        <NoteList notes={notes} onDelete={handleDelete} />
-      )}
+      {!isLoading && !isError && notes.length > 0 && <NoteList notes={notes} />}
 
       {/* Повідомлення, якщо пошук порожній */}
       {!isLoading && !isError && notes.length === 0 && search && (
