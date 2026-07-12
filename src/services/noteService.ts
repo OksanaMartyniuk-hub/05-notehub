@@ -4,6 +4,7 @@ import type { Note } from "../types/note";
 
 // Налаштування екземпляру Axios
 const instance = axios.create({
+  // ВИПРАВЛЕНО: прибрали /docs з кінця посилання
   baseURL: "https://notehub-public.goit.study/api",
   headers: {
     // Беремо токен безпеки з файлу .env.local
@@ -11,18 +12,17 @@ const instance = axios.create({
   },
 });
 
-// Інтерфейси для відповідей та параметрів (згідно з вимогами ДЗ)
+// ВИПРАВЛЕНО: Інтерфейс містить лише ті поля, які реально повертає API (вимога ментора)
 export interface FetchNotesResponse {
   notes: Note[];
-  totalNotes: number;
   totalPages: number;
-  currentPage: number;
 }
 
+// ВИПРАВЛЕНО: Використовує назви content і tag відповідно до специфікації API (вимога ментора)
 export interface CreateNoteData {
   title: string;
-  text: string;
-  category: string;
+  content: string;
+  tag: string;
 }
 
 // 1. Отримання списку нотаток із пагінацією та пошуком

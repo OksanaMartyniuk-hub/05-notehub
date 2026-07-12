@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+// Додано імпорт keepPreviousData для забезпечення плавної пагінації
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import { useDebouncedCallback } from "use-debounce";
 import { fetchNotes, createNote, deleteNote } from "../../services/noteService";
 import NoteList from "../NoteList/NoteList";
@@ -24,10 +30,12 @@ export default function App() {
     setPage(1); // При новому пошуку завжди повертаємося на 1 сторінку
   }, 500);
 
-  // Отримання даних через TanStack Query
-  const { data, isLoading, isError } = useQuery({
+  // Отримання даних через TanStack Query з плавною пагінацією
+  const { data, isLoading, isError, isPlaceholderData } = useQuery({
     queryKey: ["notes", page, search],
     queryFn: () => fetchNotes(page, 12, search),
+    // ВИПРАВЛЕНО: Додано placeholderData для утримання попередніх даних під час зміни сторінок
+    placeholderData: keepPreviousData,
   });
 
   // Мутація для створення нової нотатки
@@ -87,9 +95,14 @@ export default function App() {
         </button>
       </header>
 
-      {/* Індикатори завантаження та помилок */}
+      {/* Індикатори завантаження: показуємо Loader лише при першому старті */}
       {isLoading && <Loader />}
       {isError && <ErrorMessage />}
+
+      {/* Опціонально: візуальний індикатор фонового завантаження нової сторінки */}
+      {isPlaceholderData && (
+        <div className={css.fetchingOverlay}>Оновлення...</div>
+      )}
 
       {/* Умова: Список рендериться, тільки якщо є хоча б одна нотатка */}
       {!isLoading && !isError && notes.length > 0 && (
@@ -106,10 +119,8 @@ export default function App() {
       {/* Універсальне модальне вікно з формою створення */}
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>
-          <NoteForm
-            onSubmit={handleFormSubmit}
-            onCancel={() => setIsModalOpen(false)}
-          />
+          {/* ВИПРАВЛЕНО: Передаємо лише функцію закриття, без onSubmit */}
+          <NoteForm onCancel={() => setIsModalOpen(false)} />
         </Modal>
       )}
     </div>

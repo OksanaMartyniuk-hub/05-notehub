@@ -1,8 +1,10 @@
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
+import { useMutation, useQueryClient } from "@tanstack/react-query"; // Імпортуємо TanStack Query
+import { createNote } from "../../services/noteService"; // Імпортуємо функцію запиту
 import css from "./NoteForm.module.css";
 
-// 1. Схема валідації (Вимога ДЗ)
+// Схема валідації
 const NoteSchema = Yup.object().shape({
   title: Yup.string()
     .min(3, "Мінімум 3 символи")
@@ -17,19 +19,37 @@ const NoteSchema = Yup.object().shape({
     .required("Обов'язкове поле"),
 });
 
-// Інтерфейс для Formik (Вимога ДЗ)
 interface FormValues {
   title: string;
   content: string;
   tag: string;
 }
 
+// ВИПРАВЛЕНО: Інтерфейс очікує лише проп для закриття форми (вимога ментора)
 interface NoteFormProps {
-  onSubmit: (values: FormValues) => void;
   onCancel: () => void;
 }
 
-export default function NoteForm({ onSubmit, onCancel }: NoteFormProps) {
+export default function NoteForm({ onCancel }: NoteFormProps) {
+  const queryClient = useQueryClient();
+
+  // ВИПРАВЛЕНО: Логіка мутації та інвалідації інтегрована прямо в компонент форми (вимога ментора)
+  const createMutation = useMutation({
+    mutationFn: createNote,
+    onSuccess: () => {
+      // Оновлюємо список нотаток у кеші
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      // Закриваємо модалку після успішного створення
+      onCancel();
+    },
+    onError: (error: any) => {
+      console.error(
+        "Помилка створення нотатки:",
+        error.response?.data || error.message,
+      );
+    },
+  });
+
   const initialValues: FormValues = {
     title: "",
     content: "",
@@ -41,13 +61,15 @@ export default function NoteForm({ onSubmit, onCancel }: NoteFormProps) {
       initialValues={initialValues}
       validationSchema={NoteSchema}
       onSubmit={(values) => {
-        onSubmit(values); // Передаємо зібрані дані в App.tsx
+        // Викликаємо мутацію прямо тут, передаючи правильні назви полів API
+        createMutation.mutate({
+          title: values.title,
+          content: values.content,
+          tag: values.tag,
+        });
       }}
     >
-      {(
-        { isSubmitting, errors }, // Додали errors для тесту
-      ) => (
-        // Вимога ДЗ: Суворе збереження DOM-структури та класів
+      {({ isSubmitting }) => (
         <Form className={css.form}>
           <div className={css.formGroup}>
             <label htmlFor="title">Title</label>
@@ -94,24 +116,11 @@ export default function NoteForm({ onSubmit, onCancel }: NoteFormProps) {
             <button
               type="submit"
               className={css.submitButton}
-              disabled={isSubmitting}
+              disabled={isSubmitting || createMutation.isPending}
             >
               Create note
             </button>
           </div>
-
-          {/* НАШ ТЕСТОВИЙ ЕКРАНЧИК ПОМИЛОК (ВИДАЛИМО ПІСЛЯ ТЕСТУ) */}
-          <pre
-            style={{
-              color: "red",
-              marginTop: "15px",
-              background: "#fff0f0",
-              padding: "10px",
-              borderRadius: "4px",
-            }}
-          >
-            Помилки форми: {JSON.stringify(errors, null, 2)}
-          </pre>
         </Form>
       )}
     </Formik>
