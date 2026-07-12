@@ -1,13 +1,11 @@
 import { useState } from "react";
-// Додано імпорт keepPreviousData для забезпечення плавної пагінації
 import {
   useQuery,
-  useMutation,
   useQueryClient,
   keepPreviousData,
 } from "@tanstack/react-query";
 import { useDebouncedCallback } from "use-debounce";
-import { fetchNotes, createNote, deleteNote } from "../../services/noteService";
+import { fetchNotes } from "../../services/noteService";
 import NoteList from "../NoteList/NoteList";
 import Pagination from "../Pagination/Pagination";
 import SearchBox from "../SearchBox/SearchBox";
@@ -22,8 +20,6 @@ export default function App() {
   const [search, setSearch] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
-  const queryClient = useQueryClient();
-
   // Дебаунс для пошуку: робимо запит через 500мс після зупинки введення
   const debouncedSearch = useDebouncedCallback((value: string) => {
     setSearch(value);
@@ -34,43 +30,8 @@ export default function App() {
   const { data, isLoading, isError, isPlaceholderData } = useQuery({
     queryKey: ["notes", page, search],
     queryFn: () => fetchNotes(page, 12, search),
-    // ВИПРАВЛЕНО: Додано placeholderData для утримання попередніх даних під час зміни сторінок
     placeholderData: keepPreviousData,
   });
-
-  // Мутація для створення нової нотатки
-  const createMutation = useMutation({
-    mutationFn: createNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      setIsModalOpen(false); // закриваємо модалку після успіху
-    },
-  });
-
-  // Мутація для видалення нотатки
-  const deleteMutation = useMutation({
-    mutationFn: deleteNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-    },
-  });
-
-  // Обробник відправки форми (перетворює локальні поля форми на поля для бекенду)
-  const handleFormSubmit = (formValues: {
-    title: string;
-    content: string;
-    tag: string;
-  }) => {
-    createMutation.mutate({
-      title: formValues.title,
-      text: formValues.content, // контент форми мапиться у поле text для сервера
-      category: formValues.tag, // тег форми мапиться у поле category для сервера
-    });
-  };
-
-  const handleDelete = (id: string) => {
-    deleteMutation.mutate(id);
-  };
 
   const notes = data?.notes || [];
   const totalPages = data?.totalPages || 0;
@@ -99,12 +60,13 @@ export default function App() {
       {isLoading && <Loader />}
       {isError && <ErrorMessage />}
 
-      {/* Опціонально: візуальний індикатор фонового завантаження нової сторінки */}
+      {/* Візуальний індикатор фонового завантаження нової сторінки */}
       {isPlaceholderData && (
         <div className={css.fetchingOverlay}>Оновлення...</div>
       )}
 
       {/* Умова: Список рендериться, тільки якщо є хоча б одна нотатка */}
+      {/* ВИПРАВЛЕНО: Прибрано onDelete пропс, який викликав помилку TS2322 */}
       {!isLoading && !isError && notes.length > 0 && <NoteList notes={notes} />}
 
       {/* Повідомлення, якщо пошук порожній */}
@@ -117,7 +79,6 @@ export default function App() {
       {/* Універсальне модальне вікно з формою створення */}
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>
-          {/* ВИПРАВЛЕНО: Передаємо лише функцію закриття, без onSubmit */}
           <NoteForm onCancel={() => setIsModalOpen(false)} />
         </Modal>
       )}
